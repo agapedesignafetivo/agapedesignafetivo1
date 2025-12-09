@@ -52,13 +52,19 @@
     }
 
     button {
-      padding: 12px 20px;
-      border: 0;
+      padding: 8px 16px; /* Botões menores */
+      border: 2px solid white; /* Borda branca */
       border-radius: 12px;
-      font-size: 18px;
+      font-size: 16px; /* Tamanho de fonte menor */
       font-weight: bold;
-      background: #ffffffd0;
+      background: linear-gradient(to right, white, red); /* Gradiente de branco a vermelho */
+      color: white; /* Texto branco */
       cursor: pointer;
+      text-align: center;
+    }
+
+    button:hover {
+      opacity: 0.9; /* Efeito de hover */
     }
 
     #download { display: none; }
