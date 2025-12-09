@@ -2,35 +2,48 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Moldura Interativa</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Camera with Frame</title>
 
-    body, html {
-      width: 100%;
-      height: 100%;
-      background: #f7f3ef;
-      font-family: "Poppins", sans-serif;
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
       overflow: hidden;
+      background: black;
+      height: 100%;
+      width: 100%;
     }
 
-    /* Vídeo + Moldura */
-    #video, #overlay {
-      position: absolute;
+    #camera-wrap {
+      position: fixed;
+      inset: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: cover;
-      top: 0;
-      left: 0;
+      overflow: hidden;
+      background: black;
     }
 
-    #overlay { pointer-events: none; }
-
-    /* ⭐ BOTÕES RETANGULARES ⭐ */
-    #buttons {
+    video {
       position: absolute;
-      bottom: 40px;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      background: black;
+    }
+
+    #frame, #frame2 {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #buttons {
+      position: fixed;
+      bottom: 25px;
       width: 100%;
       display: flex;
       justify-content: center;
@@ -38,208 +51,161 @@
       z-index: 20;
     }
 
-    #buttons button {
-      padding: 16px 26px;
-      border-radius: 16px;
-      border: none;
-
-      background: linear-gradient(145deg, #f8e9da, #f3d4bb);
-      color: #5e4634;
+    button {
+      padding: 12px 20px;
+      border: 0;
+      border-radius: 12px;
       font-size: 18px;
-      font-weight: 600;
-
+      font-weight: bold;
+      background: #ffffffd0;
       cursor: pointer;
-
-      box-shadow:
-        0 6px 12px rgba(0,0,0,0.12),
-        inset 0 3px 4px rgba(255,255,255,0.5),
-        inset 0 -3px 6px rgba(0,0,0,0.05);
-
-      transition: 0.25s ease;
     }
 
-    #buttons button:active {
-      transform: scale(0.93);
-      filter: brightness(0.95);
-    }
-
-    /* PREVIEW EM TELA CHEIA */
-    #preview-container {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0,0,0,0.85);
-      display: none;
-      z-index: 9999;
-    }
-
-    /* BLOCO DA FOTO + BOTÕES */
-    #preview-content {
-      position: absolute;
-      top: 4vh; /* <<<<< Ajuste da altura da moldura */
-      left: 50%;
-      transform: translateX(-50%);
-      width: 100%;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    #photo-preview {
-      max-width: 95%;
-      max-height: 75vh;
-      border-radius: 12px;
-      border: 3px solid #e4cec0;
-      object-fit: contain;
-      margin-bottom: 20px;
-    }
-
-    /* Botões do preview */
-    .button-row {
-      width: 80%;
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-    }
-
-    #save-btn, #retry-btn {
-      flex: 1;
-      padding: 14px;
-      border-radius: 12px;
-      border: none;
-      color: #fff;
-      font-size: 18px;
-    }
-
-    #save-btn { background: #d7b89c; }
-    #retry-btn { background: #b58e72; }
-
-    #instructions {
-      margin-top: 15px;
-      background: rgba(255,255,255,0.15);
-      padding: 8px;
-      color: #fff;
-      border-radius: 8px;
-      display: none;
-      font-size: 14px;
-      text-align: center;
-    }
-
+    #download { display: none; }
   </style>
 </head>
 <body>
 
-<video id="video" autoplay playsinline muted></video>
-<img id="overlay" src="moldura1.png" alt="Moldura"/>
-
-<!-- ⭐ BOTÕES RETANGULARES ⭐ -->
-<div id="buttons">
-  <button id="switch-camera">Trocar câmera🔄</button>
-  <button id="switch-frame">Trocar Moldura 🖼️</button>
-  <button id="capture">Tirar foto 📸</button>
-</div>
-
-<canvas id="canvas" style="display:none;"></canvas>
-
-<!-- PREVIEW EM TELA CHEIA -->
-<div id="preview-container">
-  <div id="preview-content">
-    <img id="photo-preview">
-    <div class="button-row">
-      <button id="save-btn">Salvar</button>
-      <button id="retry-btn">Tirar de novo</button>
-    </div>
-    <div id="instructions">Toque e segure para salvar no iPhone.</div>
+  <div id="camera-wrap">
+    <video id="video" autoplay playsinline muted></video>
+    <img id="frame" src="moldura1.png">
+    <img id="frame2" src="moldura2.png" style="display:none;"> <!-- Segunda moldura -->
   </div>
-</div>
 
-<script>
-  let usingFrontCamera = true;
-  let stream;
-  let currentFrame = 'moldura1.png';  // Variável para controlar a moldura atual
+  <div id="buttons">
+    <button id="switchBtn">Trocar câmera🔄</button>
+    <button id="snapBtn">Tirar Foto 📸</button>
+    <button id="switchFrameBtn">Trocar Moldura 🖼️</button> <!-- Botão para trocar moldura -->
+  </div>
 
-  const video = document.getElementById("video");
-  const overlay = document.getElementById("overlay");
-  const canvas = document.getElementById("canvas");
-  const captureBtn = document.getElementById("capture");
-  const switchCameraBtn = document.getElementById("switch-camera");
-  const switchFrameBtn = document.getElementById("switch-frame");
-  const previewContainer = document.getElementById("preview-container");
-  const photoPreview = document.getElementById("photo-preview");
-  const saveBtn = document.getElementById("save-btn");
-  const retryBtn = document.getElementById("retry-btn");
-  const instructions = document.getElementById("instructions");
-  const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  <a id="download" download="fotomoldurapersonalizada.png"></a>
 
-  async function startCamera() {
-    if (stream) stream.getTracks().forEach(t => t.stop());
+  <script>
+    const video = document.getElementById("video");
+    const frame = document.getElementById("frame");
+    const frame2 = document.getElementById("frame2");
+    const snapBtn = document.getElementById("snapBtn");
+    const switchBtn = document.getElementById("switchBtn");
+    const switchFrameBtn = document.getElementById("switchFrameBtn");
+    const download = document.getElementById("download");
 
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        width: { ideal: 1920 },
-        height: { ideal: 1080 },
-        facingMode: usingFrontCamera ? "user" : "environment"
+    let stream = null;
+    let usingFront = true;
+    let usingFrame2 = false; // Variável para controlar qual moldura usar
+
+    async function startCamera(){
+      if(stream){
+        stream.getTracks().forEach(t => t.stop());
+      }
+
+      const constraints = {
+        video: { facingMode: usingFront ? "user" : "environment" }
+      };
+
+      stream = await navigator.mediaDevices.getUserMedia(constraints);
+      video.srcObject = stream;
+
+      // Espelhamento apenas NO PREVIEW
+      video.style.transform = usingFront ? "scaleX(-1)" : "scaleX(1)";
+
+      await waitForVideoReady();
+    }
+
+    function waitForVideoReady(){
+      return new Promise(resolve => {
+        if(video.readyState >= 2 && video.videoWidth > 0){
+          resolve();
+          return;
+        }
+        video.onloadedmetadata = () => resolve();
+      });
+    }
+
+    // Trocar câmera
+    switchBtn.addEventListener("click", () => {
+      usingFront = !usingFront;
+      startCamera();
+    });
+
+    // Alternar entre as molduras
+    switchFrameBtn.addEventListener("click", () => {
+      usingFrame2 = !usingFrame2;
+      if (usingFrame2) {
+        frame.style.display = "none";
+        frame2.style.display = "block";
+      } else {
+        frame.style.display = "block";
+        frame2.style.display = "none";
       }
     });
 
-    video.srcObject = stream;
-    video.style.transform = usingFrontCamera ? "scaleX(-1)" : "scaleX(1)";
-  }
+    snapBtn.addEventListener("click", async () => {
 
-  switchCameraBtn.onclick = () => {
-    usingFrontCamera = !usingFrontCamera;
+      await waitForVideoReady();
+
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+
+      const targetW = 720;
+      const targetH = 1280;
+
+      // Canvas final
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+
+      // Canvas temporário para a câmera
+      const buffer = document.createElement("canvas");
+      buffer.width = targetW;
+      buffer.height = targetH;
+      const btx = buffer.getContext("2d");
+
+      // --- DESENHAR A CÂMERA NO BUFFER ---
+      btx.save();
+      if (usingFront) {
+        btx.translate(targetW, 0);
+        btx.scale(-1, 1);
+      }
+
+      const videoRatio = vw / vh;
+      const targetRatio = targetW / targetH;
+
+      let sx, sy, sw, sh;
+
+      if (videoRatio > targetRatio) {
+        sh = vh;
+        sw = sh * targetRatio;
+        sx = (vw - sw) / 2;
+        sy = 0;
+      } else {
+        sw = vw;
+        sh = sw / targetRatio;
+        sx = 0;
+        sy = (vh - sh) / 2;
+      }
+
+      btx.drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
+      btx.restore();
+
+      // --- DESENHA O BUFFER NO CANVAS FINAL (NÃO É ESPELHADO) ---
+      ctx.drawImage(buffer, 0, 0);
+
+      // --- DESENHA A MOLDURA 100% NORMAL (NUNCA INVERTE) ---
+      if (usingFrame2) {
+        ctx.drawImage(frame2, 0, 0, targetW, targetH);
+      } else {
+        ctx.drawImage(frame, 0, 0, targetW, targetH);
+      }
+
+      // Salvar
+      const img = canvas.toDataURL("image/png");
+      download.href = img;
+      download.click();
+    });
+
     startCamera();
-  };
-
-  // Trocar entre as molduras
-  switchFrameBtn.onclick = () => {
-    currentFrame = currentFrame === 'moldura1.png' ? 'moldura2.png' : 'moldura1.png';
-    overlay.src = currentFrame; // Atualiza a moldura
-  };
-
-  captureBtn.onclick = () => {
-    const track = stream.getVideoTracks()[0];
-    const settings = track.getSettings();
-    const w = settings.width;
-    const h = settings.height;
-
-    canvas.width = w;
-    canvas.height = h;
-    const ctx = canvas.getContext("2d");
-
-    if (usingFrontCamera) {
-      ctx.translate(w, 0);
-      ctx.scale(-1, 1);
-    }
-
-    ctx.filter = "none";
-    ctx.drawImage(video, 0, 0, w, h);
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(overlay, 0, 0, w, h);
-
-    photoPreview.src = canvas.toDataURL("image/png");
-    previewContainer.style.display = "block";
-  };
-
-  saveBtn.onclick = () => {
-    const a = document.createElement("a");
-    a.href = photoPreview.src;
-    a.download = "foto.png";
-    a.click();
-
-    if (isiOS) instructions.style.display = "block";
-  };
-
-  retryBtn.onclick = () => {
-    previewContainer.style.display = "none";
-    instructions.style.display = "none";
-  };
-
-  startCamera();
-</script>
+  </script>
 
 </body>
 </html>
